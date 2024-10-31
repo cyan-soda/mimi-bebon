@@ -212,8 +212,8 @@ class RedMushroom(Object):
     ANIMATION_DELAY = 10
     VELOCITY = 2
 
-    def __init__(self, x, y, width, height, name, objects):
-        super().__init__(x, y, width, height, name, objects)
+    def __init__(self, x, y, width, height, objects):
+        super().__init__(x, y, width, height, "red_mushroom")
         self.ent = load_sprite_sheets("Enemies", "RedMushroom", width, height)
         self.image = self.ent["RedMushroom"][0]
         self.mask = py.mask.from_surface(self.image)
@@ -386,7 +386,7 @@ def handle_movement(player, objects, coins):
     to_check = [collide_left, collide_right, *vertical_collide]
     
     for obj in to_check:
-        if obj and obj.name == "fire" or obj.name == "red_mushroom":
+        if obj and (obj.name == "fire" or obj.name == "red_mushroom"):
             player.make_hit()
     
     # Check for collisions with coins
@@ -404,7 +404,7 @@ def main(window):
     fire = Fire(100, HEIGHT - block_size - 64, 16, 32)
     fire.on()
     arrow = Arrow(200, HEIGHT - block_size - 64, 18, 18)
-    red_mushroom = RedMushroom(500, HEIGHT - block_size - 36, 20, 22, "red_mushroom", [Block(block_size * 4, HEIGHT - block_size * 2, block_size), Block(block_size * 8, HEIGHT - block_size * 2, block_size)])
+    red_mushroom = RedMushroom(500, HEIGHT - block_size - 36, 20, 22, [Block(block_size * 4, HEIGHT - block_size * 2, block_size), Block(block_size * 8, HEIGHT - block_size * 2, block_size)])
     coins = [Coin(random.randint(0, WIDTH), HEIGHT - block_size - 64, 16, 16) for _ in range(5)]
     
     floor = [Block(i * block_size, HEIGHT - block_size, block_size) for i in range(-WIDTH // block_size, WIDTH * 2 // block_size)]
