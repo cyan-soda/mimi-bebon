@@ -53,6 +53,7 @@ class Player(py.sprite.Sprite):
 
     def increase_score(self, points):
         self.score += points 
+        print(f"Player's score: {self.score}")
 
     def jump(self):
         self.y_velo = -self.GRAVITY * 8
@@ -294,6 +295,7 @@ class Coin(Object):
         self.mask = py.mask.from_surface(self.image)
         self.animation_count = 0
         self.animation_name = "idle"
+        self.appear = False
         self.active = True
 
     def idle(self):
@@ -317,6 +319,56 @@ class Coin(Object):
     def remove(self):
         # self.active = False
         self.rect = py.Rect(-100, -100, 0, 0)
+
+    def draw(self, win, offset_x):
+        if self.active:
+            win.blit(self.image, (self.rect.x - offset_x, self.rect.y))
+            self.spin()
+
+# mystery box class
+class MysteryBox(Object):
+    ANIMATION_DELAY = 10
+    def __init__(self, x, y, width, height, name=None):
+        super().__init__(x, y, width, height, "coinbox")
+        self.box = load_sprite_sheets("Items", "Coinbox", width, height)
+        self.image = self.box["coinbox"][0]
+        self.mask = py.mask.from_surface(self.image)
+        self.animation_count = 0
+        self.animation_name = "coinbox"
+        self.active = True
+        self.coin = None
+
+    def get_hit(self, player):
+        if self.active:
+            self.active = False
+            # self.animation_name = "hit"
+            player.increase_score(1)
+            # coin appears where the box was hit
+            self.coin = Coin(self.rect.x, self.rect.y - 20, 16, 16)
+            return self.coin
+
+    def loop(self):
+        sprites = self.box[self.animation_name]
+        sprite_index = (self.animation_count // self.ANIMATION_DELAY) % len(sprites)
+        self.image = sprites[sprite_index]
+        self.animation_count += 1
+
+        self.rect = self.image.get_rect(topleft=(self.rect.x, self.rect.y))
+        self.mask = py.mask.from_surface(self.image) # pixel perfect collision
+
+        if self.animation_count // self.ANIMATION_DELAY > len(sprites):
+            self.animation_count = 0
+
+        if self.coin and self.coin.active:
+            self.coin.loop()
+        elif self.coin and not self.coin.active:
+            self.coin = None 
+
+        # if the box is hit
+        if not self.active:
+            self.image = self.box["coinbox"][0]
+            self.mask = py.mask.from_surface(self.image)
+
 
 def get_background(bg_name):
     image = py.image.load(join("assets", "Background", bg_name))
@@ -351,7 +403,9 @@ def handle_vertical_collision(player, objects, dy):
                 player.landed()
             elif dy < 0:
                 player.rect.top = obj.rect.bottom
-                player.hit_head() 
+                player.hit_head()
+                if obj.name == "coinbox":
+                    obj.get_hit(player)
 
             collided_objects.append(obj)
 
@@ -406,9 +460,11 @@ def main(window):
     arrow = Arrow(200, HEIGHT - block_size - 64, 18, 18)
     red_mushroom = RedMushroom(500, HEIGHT - block_size - 36, 20, 22, [Block(block_size * 4, HEIGHT - block_size * 2, block_size), Block(block_size * 8, HEIGHT - block_size * 2, block_size)])
     coins = [Coin(random.randint(0, WIDTH), HEIGHT - block_size - 64, 16, 16) for _ in range(5)]
+    coinbox = MysteryBox(300, HEIGHT - block_size - 124, 16, 16)
+    # koopa = Koopa.Koopa(500, HEIGHT - block_size - 36, 20, 22, [Block(block_size * 4, HEIGHT - block_size * 2, block_size), Block(block_size * 8, HEIGHT - block_size * 2, block_size)], None)
     
     floor = [Block(i * block_size, HEIGHT - block_size, block_size) for i in range(-WIDTH // block_size, WIDTH * 2 // block_size)]
-    objects = [*floor, fire, *coins, arrow, red_mushroom, 
+    objects = [*floor, fire, *coins, arrow, red_mushroom, coinbox, 
                 Block(0, HEIGHT - block_size * 2, block_size),
                 Block(block_size * 4, HEIGHT - block_size * 2, block_size),
                 Block(block_size * 8, HEIGHT - block_size * 2, block_size),
@@ -432,10 +488,9 @@ def main(window):
         fire.loop()
         arrow.loop()
         red_mushroom.loop()
+        coinbox.loop()
         for coin in coins:
             coin.loop()
-
-        # Koopa.Koopa(200, 200, 50, 50, 1)
 
         handle_movement(player, objects, coins)  # Pass coins to the movement handler
         handle_collisions(player, [red_mushroom])
